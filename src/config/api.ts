@@ -16,9 +16,25 @@ export interface OpenAIConfig {
   maxTokens: number;
 }
 
+// 🔧 根据环境选择 API 地址
+const getBaseUrl = (): string => {
+  // 如果设置了环境变量，使用环境变量
+  if (process.env.REACT_APP_API_BASE_URL) {
+    return process.env.REACT_APP_API_BASE_URL;
+  }
+  
+  // 开发环境使用代理避免跨域问题
+  if (process.env.NODE_ENV === 'development') {
+    return '/api'; // 通过 Vite 代理
+  }
+  
+  // 生产环境直接访问
+  return 'http://localhost:8787';
+};
+
 // 默认API配置
 export const API_CONFIG: APIConfig = {
-  baseUrl: process.env.REACT_APP_API_BASE_URL || 'http://localhost:8787',
+  baseUrl: getBaseUrl(),
   chatEndpoint: '/chat',
   timeout: 30000, // 30秒
   retries: 3, // 重试次数
@@ -76,11 +92,17 @@ export const ERROR_MESSAGES = {
   SERVER_ERROR: '服务器错误，请稍后重试',
   TIMEOUT_ERROR: '请求超时，请稍后重试',
   UNKNOWN_ERROR: '未知错误，请稍后重试',
+  CORS_ERROR: '跨域请求被阻止，请检查服务器配置',
 } as const;
 
 // 根据错误类型获取友好的错误消息
 export const getErrorMessage = (error: any): string => {
   if (!error) return ERROR_MESSAGES.UNKNOWN_ERROR;
+
+  // 跨域错误
+  if (error.message?.includes('CORS') || error.message?.includes('cors')) {
+    return ERROR_MESSAGES.CORS_ERROR;
+  }
 
   // 网络错误
   if (error.name === 'TypeError' && error.message.includes('fetch')) {
